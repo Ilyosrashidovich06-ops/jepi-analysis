@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+venv/
+.venv/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Data (snapshots are auto-generated — commit if you want offline fallback)
+# data/snapshots/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
