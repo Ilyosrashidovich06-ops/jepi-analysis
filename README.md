@@ -1,11 +1,8 @@
-# JEPI Analyse — FRA-UAS Portfoliomanagement SoSe 2026
+# Die 45-Milliarden-Dollar-Frage — JEPI
 
-**Deutsch:** Streamlit-App zur Analyse des JPMorgan Equity Premium Income ETF (JEPI)
-als Grundlage einer 15-minütigen Bachelorpräsentation an der Frankfurt University of
-Applied Sciences (FRA-UAS) im Sommersemester 2026.
+Empirische Analyse des JPMorgan Equity Premium Income ETF (JEPI): Generiert die monatliche Ausschüttungsrendite von ~8,3 % ökonomisch echtes Einkommen — oder wird Aktienrendite systematisch in laufende Auszahlungen umgewandelt?
 
-**English:** A full Streamlit web app analyzing JEPI's covered-call yield strategy —
-built for a Bachelor's portfolio management presentation at FRA-UAS, SoSe 2026.
+Frankfurt UAS · Portfoliomanagement SS 2026 · Leon Ye · Georgios Pelekanos · Thomas Palmer · Ilyos Umurzakov
 
 ---
 
