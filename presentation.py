@@ -268,42 +268,20 @@ for col, (val, lbl) in zip([k1,k2,k3,k4], [
 # ── FORSCHUNGSFRAGE ───────────────────────────────────────────────────────────
 st.markdown('<hr class="sec-rule">', unsafe_allow_html=True)
 
-fq_col, fq_side = st.columns([3, 1])
-with fq_col:
-    st.markdown("""
+st.markdown("""
 <div class="fq-box">
   <div class="fq-q">
-    Generiert JEPI echtes Einkommen —<br>oder verpackt er Aktienrendite nur neu?
+    Generiert JEPI Einkommen —<br>oder verpackt er Aktienrendite neu?
   </div>
-  <div class="fq-sub">
-    <span class="fq-num">1</span>
-    Lässt sich die monatliche Ausschüttung ökonomisch aus dem Covered-Call-Mechanismus
-    <em>rekonstruieren</em>?
-  </div>
-  <div class="fq-sub">
-    <span class="fq-num">2</span>
-    Wie verhält sich JEPI in <em>Aufwärts- vs. Abwärtsmärkten</em>?
-    Bietet der ETF echten Kapitalschutz?
-  </div>
-  <div class="fq-sub">
-    <span class="fq-num">3</span>
-    Wann lohnt sich eine JEPI-Allokation im
-    <em>Markowitz-optimierten Portfolio</em> — und wann nicht?
-  </div>
+  <p style="font-size:1.1rem;color:#c9d1d9;margin:0;line-height:1.75;">
+    Der JPMorgan Equity Premium Income ETF verwaltet $45,6 Mrd. und schüttet monatlich
+    rund 8,3 % p.a. aus — rund sechsmal mehr als der S&amp;P 500.
+    Diese Arbeit untersucht, ob diese Ausschüttung ökonomisch echtes Einkommen darstellt
+    oder ob sie systematisch aus der Kursrendite der Anleger finanziert wird —
+    als Nebenprodukt des monatlichen Covered-Call-Overlays.
+  </p>
 </div>
-    """, unsafe_allow_html=True)
-with fq_side:
-    st.markdown(f"""
-<div class="info" style="margin-top:8px;">
-<strong>Stichprobe</strong><br>
-Mai 2020 – Mai 2026<br>
-72 Monatsobservationen<br><br>
-<strong>Methoden</strong><br>
-Black-Scholes · OLS<br>
-Markowitz SLSQP<br>
-VRP-Regime-Analyse
-</div>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 # ── WAS IST JEPI? ─────────────────────────────────────────────────────────────
 st.markdown('<hr class="sec-rule">', unsafe_allow_html=True)
@@ -566,60 +544,30 @@ Kein statistisch bedeutsamer Kapitalschutz in Abwärtsmärkten.
 </div>
 """, unsafe_allow_html=True)
 
-# ── SCATTER + DRAWDOWN ────────────────────────────────────────────────────────
-sc1, sc2 = st.columns(2)
-
-with sc1:
-    st.markdown("**Monatliche Renditen: JEPI vs. SPY (Regressionsgerade aus Paper)**")
-    m_sc = monthly[["JEPI_ret","SPY_ret"]].dropna() * 100
-    up = m_sc["SPY_ret"] > 0
-
-    fig_sc = go.Figure()
-    fig_sc.add_trace(go.Scatter(
-        x=m_sc.loc[up,"SPY_ret"], y=m_sc.loc[up,"JEPI_ret"],
-        mode="markers", name=f"SPY ↑ (N={int(up.sum())})",
-        marker=dict(color="#3fb950", size=7, opacity=0.80)))
-    fig_sc.add_trace(go.Scatter(
-        x=m_sc.loc[~up,"SPY_ret"], y=m_sc.loc[~up,"JEPI_ret"],
-        mode="markers", name=f"SPY ↓ (N={int((~up).sum())})",
-        marker=dict(color=CS, size=7, opacity=0.80)))
-    xr_up = np.linspace(float(m_sc.loc[up,"SPY_ret"].min()), float(m_sc.loc[up,"SPY_ret"].max()), 50)
-    xr_dn = np.linspace(float(m_sc.loc[~up,"SPY_ret"].min()), float(m_sc.loc[~up,"SPY_ret"].max()), 50)
-    fig_sc.add_trace(go.Scatter(x=xr_up, y=T4["up_beta"]*xr_up,
-        name=f"β↑ = {T4['up_beta']:.3f}", line=dict(color="#3fb950", width=2, dash="dash")))
-    fig_sc.add_trace(go.Scatter(x=xr_dn, y=T4["dn_beta"]*xr_dn,
-        name=f"β↓ = {T4['dn_beta']:.3f}", line=dict(color=CS, width=2, dash="dash")))
-    fig_sc.add_vline(x=0, line_color=MUTED, line_width=0.8)
-    fig_sc.add_hline(y=0, line_color=MUTED, line_width=0.8)
-    fig_sc.update_layout(**lo(h=410))
-    fig_sc.update_layout(xaxis_title="SPY Monatsrendite (%)", yaxis_title="JEPI Monatsrendite (%)")
-    fig_sc.update_xaxes(ticksuffix=" %"); fig_sc.update_yaxes(ticksuffix=" %")
-    st.plotly_chart(fig_sc, use_container_width=True)
-
-with sc2:
-    st.markdown("**Kumulativer Drawdown — JEPI, SPY, AGG**")
-    dd = drawdown_data(daily)
-    fig_dd = go.Figure()
-    for name, color, fill in [
-        ("JEPI", "#58a6ff", "rgba(88,166,255,0.12)"),
-        ("SPY",  CS,        "rgba(200,16,46,0.10)"),
-        ("AGG",  CA,        "rgba(34,139,34,0.10)"),
-    ]:
-        fig_dd.add_trace(go.Scatter(
-            x=dd.index, y=dd[name], name=name,
-            fill="tozeroy", fillcolor=fill,
-            line=dict(color=color, width=2.2)))
-    for name, val, color in [("JEPI", T1["JEPI"]["mdd"],"#58a6ff"),
-                              ("SPY",  T1["SPY"]["mdd"],  CS),
-                              ("AGG",  T1["AGG"]["mdd"],  CA)]:
-        fig_dd.add_annotation(x=0.99, y=val, xref="paper", yref="y",
-            text=f"{val:.1f} %", font=dict(size=11, color=color),
-            showarrow=False, xanchor="right", bgcolor=BG2, bordercolor=BD)
-    fig_dd.add_hline(y=0, line_color=MUTED, line_width=0.8)
-    fig_dd.update_layout(**lo(h=410))
-    fig_dd.update_layout(xaxis_title="Datum", yaxis_title="Drawdown (%)")
-    fig_dd.update_yaxes(ticksuffix=" %")
-    st.plotly_chart(fig_dd, use_container_width=True)
+# ── DRAWDOWN ─────────────────────────────────────────────────────────────────
+st.markdown("**Kumulativer Drawdown — JEPI, SPY, AGG**")
+dd = drawdown_data(daily)
+fig_dd = go.Figure()
+for name, color, fill in [
+    ("JEPI", "#58a6ff", "rgba(88,166,255,0.12)"),
+    ("SPY",  CS,        "rgba(200,16,46,0.10)"),
+    ("AGG",  CA,        "rgba(34,139,34,0.10)"),
+]:
+    fig_dd.add_trace(go.Scatter(
+        x=dd.index, y=dd[name], name=name,
+        fill="tozeroy", fillcolor=fill,
+        line=dict(color=color, width=2.2)))
+for name, val, color in [("JEPI", T1["JEPI"]["mdd"],"#58a6ff"),
+                          ("SPY",  T1["SPY"]["mdd"],  CS),
+                          ("AGG",  T1["AGG"]["mdd"],  CA)]:
+    fig_dd.add_annotation(x=0.99, y=val, xref="paper", yref="y",
+        text=f"{val:.1f} %", font=dict(size=11, color=color),
+        showarrow=False, xanchor="right", bgcolor=BG2, bordercolor=BD)
+fig_dd.add_hline(y=0, line_color=MUTED, line_width=0.8)
+fig_dd.update_layout(**lo(h=420))
+fig_dd.update_layout(xaxis_title="Datum", yaxis_title="Drawdown (%)")
+fig_dd.update_yaxes(ticksuffix=" %")
+st.plotly_chart(fig_dd, use_container_width=True)
 
 # ── ABBILDUNG 3 — EFFIZIENZLINIE & VRP-REGIMES ───────────────────────────────
 st.markdown('<hr class="sec-rule">', unsafe_allow_html=True)
@@ -761,79 +709,6 @@ inv2.metric("JEPI kumulierte Ausschüttungen", f"${final_j_divs:,.0f}",
 inv3.metric("SPY Total Return", f"${final_spy:,.0f}",
             delta=f"{final_spy/invest_amt-1:+.1%}")
 
-j_ret_pct   = (final_j_total / invest_amt - 1) * 100
-spy_ret_pct = (final_spy     / invest_amt - 1) * 100
-st.markdown(f"""
-<div class="note">
-<strong>Die zentrale Botschaft:</strong> Aus ${invest_amt:,} wurden bei JEPI
-${final_j_divs:,.0f} an Ausschüttungen in bar ausgezahlt — das klingt nach echtem Einkommen.
-Doch der Kapitalwert liegt bei nur ${final_j_price:,.0f}. Addiert man alle Ausschüttungen,
-kommt JEPI auf ${final_j_total:,.0f} (+{j_ret_pct:.0f}&thinsp;%).
-<strong>SPY erreicht ${final_spy:,.0f} (+{spy_ret_pct:.0f}&thinsp;%)</strong> —
-rund <strong>${gap:,.0f} mehr</strong>. Die monatlichen Ausschüttungen sind keine Zugabe —
-sie <em>ersetzen</em> Kursgewinne, die beim SPY stattdessen verbleiben.
-</div>
-""", unsafe_allow_html=True)
-
-# ── FÜR WEN IST JEPI GEEIGNET? ────────────────────────────────────────────────
-st.markdown("---")
-st.markdown("### Für wen ist JEPI der richtige Baustein?")
-
-fit1, fit2, fit3 = st.columns(3)
-with fit1:
-    st.markdown(f"""
-<div class="fit-box" style="border-top:3px solid #3fb950;">
-  <div class="fit-head" style="color:#3fb950;">Gut geeignet</div>
-  <div class="fit-body">
-    <strong>Stiftungen &amp; Non-Profits</strong><br>
-    Benötigen regelmäßige Ausschüttungen zur Deckung laufender Kosten, ohne Kapital
-    veräußern zu müssen — JEPI liefert planbare monatliche Erträge.<br><br>
-    <strong>Kapitalentnahme-Portfolios</strong><br>
-    Anleger in der Entnahmephase, für die stetiger Cash-flow wichtiger ist
-    als maximale Gesamtrendite.<br><br>
-    <strong>Niedrig-VRP-Phasen</strong><br>
-    Wenn VRP unter dem Median liegt, empfiehlt das Markowitz-Modell
-    bis zu 46,4 % JEPI-Allokation (Sharpe 1,99).
-  </div>
-</div>
-    """, unsafe_allow_html=True)
-
-with fit2:
-    st.markdown(f"""
-<div class="fit-box" style="border-top:3px solid #f0883e;">
-  <div class="fit-head" style="color:#f0883e;">Bedingt geeignet</div>
-  <div class="fit-body">
-    <strong>Einkommens-orientierte Privatanleger</strong><br>
-    Für Investoren, die psychologisch von monatlichen Ausschüttungen profitieren —
-    sofern der Renditeabstand zu SPY bewusst akzeptiert wird.<br><br>
-    <strong>Taktische Beimischung</strong><br>
-    Als Satellitenbaustein neben Kern-Aktien-ETFs in Phasen
-    erhöhter Volatilität mit positiver VRP sinnvoll.<br><br>
-    <strong>Niedrigere Drawdown-Toleranz</strong><br>
-    Wer geringere Schwankungen einem höheren Ertragspotenzial vorzieht
-    (Max DD −13,7 % vs. −24,5 % bei SPY).
-  </div>
-</div>
-    """, unsafe_allow_html=True)
-
-with fit3:
-    st.markdown(f"""
-<div class="fit-box" style="border-top:3px solid #C8102E;">
-  <div class="fit-head" style="color:#C8102E;">Weniger geeignet</div>
-  <div class="fit-body">
-    <strong>Wachstumsorientierte Anleger</strong><br>
-    Wer langfristige Vermögensbildung anstrebt, verzichtet mit JEPI auf
-    ca. ${gap:,.0f} Gesamtertrag je ${invest_amt:,} investiertem Kapital
-    gegenüber SPY über 6 Jahre.<br><br>
-    <strong>Langfristiger Vermögensaufbau</strong><br>
-    Der Zinseszinseffekt durch reinvestierte Dividenden beim SPY
-    übertrifft die JEPI-Gesamtrendite systematisch über Zeit.<br><br>
-    <strong>Hohe-VRP-Regime</strong><br>
-    Das Modell empfiehlt in diesen Phasen <strong>0 % JEPI</strong>
-    (Sharpe nur 0,05 im hohen VRP-Terzil).
-  </div>
-</div>
-    """, unsafe_allow_html=True)
 
 # ── GESAMTFAZIT ───────────────────────────────────────────────────────────────
 st.markdown('<hr class="sec-rule">', unsafe_allow_html=True)
@@ -860,7 +735,6 @@ for col, (num, head, body) in zip([c1,c2,c3], [
 
 st.markdown("""
 <div class="answer" style="margin-top:24px;">
-  <strong>Kurzantwort auf die Forschungsfrage:</strong><br><br>
   JEPI generiert kein ökonomisch <em>neues</em> Einkommen — er verpackt Aktienrendite um.
   Die monatlichen Ausschüttungen werden strukturell durch den Verzicht auf Kursgewinne
   oberhalb des Optionsstrikes finanziert. Wer alle Erträge summiert, liegt mit JEPI
