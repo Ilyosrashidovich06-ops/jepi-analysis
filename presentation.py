@@ -21,7 +21,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ── CSS: dark/projector, no sidebar ──────────────────────────────────────────
 st.markdown("""
 <style>
   section[data-testid="stSidebar"]        { display:none !important; }
@@ -41,19 +40,33 @@ st.markdown("""
   .kpi-val { font-size:2.3rem; font-weight:800; color:#58a6ff; }
   .kpi-lbl { font-size:0.85rem; color:#8b949e; margin-top:6px; }
 
-  .find { background:#0d2a1a; border-left:5px solid #3fb950; border-radius:0 8px 8px 0;
-          padding:14px 18px; margin:12px 0; font-size:1.05rem; color:#aff1b6; }
-  .note { background:#2a1a0d; border-left:5px solid #f0883e; border-radius:0 8px 8px 0;
-          padding:14px 18px; margin:12px 0; font-size:1.05rem; color:#ffa657; }
-  .info { background:#0d1f3a; border-left:5px solid #58a6ff; border-radius:0 8px 8px 0;
-          padding:14px 18px; margin:12px 0; font-size:1.05rem; color:#bfdbfe; }
+  .find   { background:#0d2a1a; border-left:5px solid #3fb950; border-radius:0 8px 8px 0;
+            padding:14px 18px; margin:12px 0; font-size:1.05rem; color:#aff1b6; }
+  .note   { background:#2a1a0d; border-left:5px solid #f0883e; border-radius:0 8px 8px 0;
+            padding:14px 18px; margin:12px 0; font-size:1.05rem; color:#ffa657; }
+  .info   { background:#0d1f3a; border-left:5px solid #58a6ff; border-radius:0 8px 8px 0;
+            padding:14px 18px; margin:12px 0; font-size:1.05rem; color:#bfdbfe; }
+  .answer { background:#1a0d2a; border-left:5px solid #d2a8ff; border-radius:0 8px 8px 0;
+            padding:16px 20px; margin:18px 0; font-size:1.05rem; color:#e2c8ff; }
 
-  .conc { background:#161b22; border:2px solid #1f6feb; border-radius:14px;
-          padding:22px; min-height:180px; }
+  .fq-box { background:linear-gradient(135deg,#0d1f3a 0%,#161b22 100%);
+            border:2px solid #1f6feb; border-radius:14px; padding:24px 28px; margin:8px 0; }
+  .fq-q   { font-size:1.6rem; font-weight:700; color:#79c0ff;
+            margin-bottom:18px; line-height:1.4; }
+  .fq-sub { font-size:1.0rem; color:#c9d1d9; margin:8px 0; }
+  .fq-num { color:#58a6ff; font-weight:700; margin-right:8px; }
+
+  .conc      { background:#161b22; border:2px solid #1f6feb; border-radius:14px;
+               padding:22px; min-height:180px; }
   .conc-num  { font-size:0.73rem; color:#58a6ff; text-transform:uppercase;
                letter-spacing:3px; font-weight:700; margin-bottom:6px; }
   .conc-head { font-size:1.2rem; font-weight:700; color:#e6edf3; margin-bottom:10px; }
   .conc-body { font-size:1.0rem; color:#c9d1d9; line-height:1.65; }
+
+  .fit-box  { background:#161b22; border:1px solid #30363d; border-radius:12px;
+              padding:18px; margin:6px 0; min-height:200px; }
+  .fit-head { font-size:1.05rem; font-weight:700; margin-bottom:10px; }
+  .fit-body { font-size:0.95rem; color:#c9d1d9; line-height:1.65; }
 
   .logo-box { background:white; padding:8px 10px; border-radius:8px;
               display:inline-block; line-height:0; }
@@ -95,11 +108,9 @@ T5 = [
     ("Hohe VRP (Terzil 3)",      24,  60.8,  0.0, 0.0, 39.2, 0.51),
 ]
 
-# ── Colors ────────────────────────────────────────────────────────────────────
 CJ="#003087"; CS="#C8102E"; CA="#228B22"; CC="#888888"; CR="#E8621A"
 BG="#0d1117";  BG2="#161b22"; BD="#30363d"; TXT="#e6edf3"; MUTED="#8b949e"
 
-# ── Dark chart base layout ────────────────────────────────────────────────────
 def lo(h=480, title=""):
     d = dict(
         paper_bgcolor=BG, plot_bgcolor=BG2,
@@ -115,7 +126,6 @@ def lo(h=480, title=""):
         d["title"] = dict(text=title, font=dict(size=15, color="#79c0ff"))
     return d
 
-# ── Data loading ──────────────────────────────────────────────────────────────
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _DATA = os.path.join(_HERE, "data")
 
@@ -130,19 +140,18 @@ def load_daily():
 @st.cache_data(ttl=300)
 def load_live():
     try:
-        raw = yf.download(["JEPI", "SPY"], start="2020-05-20",
+        raw = yf.download(["JEPI","SPY"], start="2020-05-20",
                            auto_adjust=True, progress=False, threads=False)
         if raw.empty:
             return None, "Keine Daten"
         close = raw["Close"] if isinstance(raw.columns, pd.MultiIndex) else raw
-        return close[["JEPI", "SPY"]].dropna(), None
+        return close[["JEPI","SPY"]].dropna(), None
     except Exception as e:
         return None, str(e)
 
 monthly = load_monthly()
 daily   = load_daily()
 
-# ── Computation helpers ───────────────────────────────────────────────────────
 def _bs(S, K, r, q, sig, T=1/12):
     if sig <= 0 or T <= 0: return max(S-K, 0.0)
     d1 = (np.log(S/K)+(r-q+0.5*sig**2)*T)/(sig*np.sqrt(T)); d2=d1-sig*np.sqrt(T)
@@ -176,7 +185,7 @@ def drawdown_data(_d):
     return pd.DataFrame(dd)
 
 @st.cache_data
-def compute_10k(_d, initial=10_000):
+def compute_10k(_d, initial=100.0):
     d = _d[["JEPI_px","JEPI_divs","SPY_tr"]].dropna().copy()
     shares_j = initial / d["JEPI_px"].iloc[0]
     j_price  = shares_j * d["JEPI_px"]
@@ -215,7 +224,6 @@ def frontier(_m):
     vt = float(np.sqrt(float(best_w@Sa@best_w))); rt = float(best_w@mu_a)
     return mu, np.sqrt(np.diag(Sig)), rf, best_w, best_sr, np.array(fv), np.array(fr), vt, rt
 
-# ── Logo helper (white box on dark bg) ────────────────────────────────────────
 def logo_html(path, width=190):
     if not os.path.exists(path): return ""
     with open(path, "rb") as f:
@@ -224,7 +232,7 @@ def logo_html(path, width=190):
             f'<img src="data:image/png;base64,{b64}" width="{width}"></div>')
 
 # ╔══════════════════════════════════════════════════════════════════════════════╗
-# ║  LAYOUT                                                                      ║
+# ║  LAYOUT                                                                     ║
 # ╚══════════════════════════════════════════════════════════════════════════════╝
 
 # ── HEADER ────────────────────────────────────────────────────────────────────
@@ -246,8 +254,8 @@ with col_title:
 st.markdown('<hr class="sec-rule">', unsafe_allow_html=True)
 
 # ── KPI CARDS ─────────────────────────────────────────────────────────────────
-k1,k2,k3,k4 = st.columns(4)
-for col,(val,lbl) in zip([k1,k2,k3,k4],[
+k1, k2, k3, k4 = st.columns(4)
+for col, (val, lbl) in zip([k1,k2,k3,k4], [
     ("$45,6 Mrd.",  "JEPI Verwaltetes Vermögen"),
     ("~8,3 %",      "JEPI Ausschüttungsrendite p.a."),
     ("~1,3 %",      "SPY Ausschüttungsrendite p.a."),
@@ -257,7 +265,47 @@ for col,(val,lbl) in zip([k1,k2,k3,k4],[
                  f"<div class='kpi-lbl'>{lbl}</div></div>",
                  unsafe_allow_html=True)
 
-# ── EINLEITUNG ────────────────────────────────────────────────────────────────
+# ── FORSCHUNGSFRAGE ───────────────────────────────────────────────────────────
+st.markdown('<hr class="sec-rule">', unsafe_allow_html=True)
+
+fq_col, fq_side = st.columns([3, 1])
+with fq_col:
+    st.markdown("""
+<div class="fq-box">
+  <div class="fq-q">
+    Generiert JEPI echtes Einkommen —<br>oder verpackt er Aktienrendite nur neu?
+  </div>
+  <div class="fq-sub">
+    <span class="fq-num">1</span>
+    Lässt sich die monatliche Ausschüttung ökonomisch aus dem Covered-Call-Mechanismus
+    <em>rekonstruieren</em>?
+  </div>
+  <div class="fq-sub">
+    <span class="fq-num">2</span>
+    Wie verhält sich JEPI in <em>Aufwärts- vs. Abwärtsmärkten</em>?
+    Bietet der ETF echten Kapitalschutz?
+  </div>
+  <div class="fq-sub">
+    <span class="fq-num">3</span>
+    Wann lohnt sich eine JEPI-Allokation im
+    <em>Markowitz-optimierten Portfolio</em> — und wann nicht?
+  </div>
+</div>
+    """, unsafe_allow_html=True)
+with fq_side:
+    st.markdown(f"""
+<div class="info" style="margin-top:8px;">
+<strong>Stichprobe</strong><br>
+Mai 2020 – Mai 2026<br>
+72 Monatsobservationen<br><br>
+<strong>Methoden</strong><br>
+Black-Scholes · OLS<br>
+Markowitz SLSQP<br>
+VRP-Regime-Analyse
+</div>
+    """, unsafe_allow_html=True)
+
+# ── WAS IST JEPI? ─────────────────────────────────────────────────────────────
 st.markdown('<hr class="sec-rule">', unsafe_allow_html=True)
 st.markdown("## Was ist JEPI?")
 
@@ -275,16 +323,15 @@ schnellstwachsende aktive ETF aller Zeiten.
     """)
     st.markdown("""
 <div class="info">
-<strong>Forschungsfrage:</strong> Ist die ~8,3 %-Ausschüttungsrendite ökonomisch
-<em>echtes</em> Einkommen — oder eine systematische Umwandlung von Kursrendite in
-laufende Auszahlungen, finanziert durch den Verkauf der Aufwärtsbeteiligung?
+<strong>Kernmechanismus:</strong> Der Verkauf des Calls erzeugt sofortige Prämieneinnahmen —
+begrenzt aber den Kursgewinn oberhalb des Strikes.
+Die Prämie <em>stammt aus der eigenen Aufwärtsbeteiligung des Anlegers</em>.
 </div>
     """, unsafe_allow_html=True)
     st.markdown("""
 <div class="note">
-<strong>Kernmechanismus:</strong> Der Verkauf des Calls erzeugt sofortige Prämieneinnahmen —
-begrenzt aber den Kursgewinn oberhalb des Strikes.
-Die Prämie <em>stammt aus der eigenen Aufwärtsbeteiligung des Anlegers</em>.
+<strong>Zentrale Spannung:</strong> Klingt die ~8,3 %-Rendite nach echtem Einkommen —
+oder ist sie nur Kursrendite in einem anderen Gewand?
 </div>
     """, unsafe_allow_html=True)
 
@@ -302,18 +349,61 @@ with col_cc:
     fig_cc.add_trace(go.Scatter(x=xs, y=pnl_call, name="Short Call + Prämie",
         line=dict(color="#888888", width=1.8, dash="dot")))
     fig_cc.add_trace(go.Scatter(x=xs, y=pnl_cc, name="Covered Call (gesamt)",
-        line=dict(color=CJ if BG=="#0d1117" else CJ, width=3.5),
+        line=dict(color=CJ, width=3.5),
         fill="tozeroy", fillcolor="rgba(0,80,200,0.12)"))
     fig_cc.add_vline(x=K, line_color=TXT, line_width=1.2, line_dash="dot",
                      annotation_text=f"Strike K={int(K)}", annotation_font_color=TXT,
                      annotation_font_size=12, annotation_position="top right")
     fig_cc.update_layout(**lo(h=420))
-    fig_cc.update_layout(
-        xaxis_title="S&P-500-Kurs bei Verfall",
-        yaxis_title="Gewinn / Verlust",
-        hovermode="x",
-    )
+    fig_cc.update_layout(xaxis_title="S&P-500-Kurs bei Verfall",
+                         yaxis_title="Gewinn / Verlust", hovermode="x")
     st.plotly_chart(fig_cc, use_container_width=True)
+
+# ── LIVE KURSVERLAUF ──────────────────────────────────────────────────────────
+st.markdown('<hr class="sec-rule">', unsafe_allow_html=True)
+st.markdown("## Live Kursverlauf — JEPI & SPY (seit Auflage Mai 2020)")
+
+live_data, live_err = load_live()
+
+if live_data is not None and not live_data.empty:
+    jepi_now = float(live_data["JEPI"].iloc[-1])
+    spy_now  = float(live_data["SPY"].iloc[-1])
+    jepi_chg = float((live_data["JEPI"].iloc[-1]/live_data["JEPI"].iloc[-2]-1)*100)
+    spy_chg  = float((live_data["SPY"].iloc[-1]/live_data["SPY"].iloc[-2]-1)*100)
+
+    mc1, mc2, mc3 = st.columns([1,1,3])
+    mc1.metric("JEPI", f"${jepi_now:.2f}", f"{jepi_chg:+.2f} % (1T)")
+    mc2.metric("SPY",  f"${spy_now:.2f}",  f"{spy_chg:+.2f} % (1T)")
+    mc3.markdown(
+        f"<p style='color:{MUTED};font-size:0.9rem;padding-top:20px;'>"
+        f"Letzter Datenpunkt: {live_data.index[-1].strftime('%d.%m.%Y')} · "
+        "Live-Daten via Yahoo Finance · Aktualisierung alle 5 Minuten</p>",
+        unsafe_allow_html=True,
+    )
+    bj = live_data["JEPI"].iloc[0]; bs_ = live_data["SPY"].iloc[0]
+    fig_live = go.Figure()
+    fig_live.add_trace(go.Scatter(
+        x=live_data.index, y=live_data["JEPI"]/bj*100, name="JEPI",
+        line=dict(color="#58a6ff", width=2.8),
+        fill="tozeroy", fillcolor="rgba(31,111,235,0.10)"))
+    fig_live.add_trace(go.Scatter(
+        x=live_data.index, y=live_data["SPY"]/bs_*100, name="SPY",
+        line=dict(color=CS, width=2.2, dash="dot")))
+    fig_live.update_layout(**lo(h=440, title="Gesamtrendite indexiert (Basis = 100, seit Mai 2020)"))
+    fig_live.update_layout(xaxis_title="Datum", yaxis_title="Indexiert (Basis = 100)")
+    st.plotly_chart(fig_live, use_container_width=True)
+else:
+    st.warning(f"Live-Daten nicht verfügbar ({live_err}). Offline-Daten werden angezeigt.")
+    tr = daily[["JEPI_tr","SPY_tr"]].dropna()
+    bj = tr["JEPI_tr"].iloc[0]; bs_ = tr["SPY_tr"].iloc[0]
+    fig_off = go.Figure()
+    fig_off.add_trace(go.Scatter(x=tr.index, y=tr["JEPI_tr"]/bj*100, name="JEPI",
+        line=dict(color="#58a6ff", width=2.8)))
+    fig_off.add_trace(go.Scatter(x=tr.index, y=tr["SPY_tr"]/bs_*100, name="SPY",
+        line=dict(color=CS, width=2, dash="dot")))
+    fig_off.update_layout(**lo(h=440, title="Gesamtrendite indexiert (Basis = 100, CSV-Daten)"))
+    fig_off.update_layout(xaxis_title="Datum", yaxis_title="Indexiert (Basis = 100)")
+    st.plotly_chart(fig_off, use_container_width=True)
 
 # ── DATENBASIS ────────────────────────────────────────────────────────────────
 st.markdown('<hr class="sec-rule">', unsafe_allow_html=True)
@@ -347,59 +437,11 @@ JEPI bietet ca. <strong>65 % der SPY-Rendite bei nur 66 % der Volatilität</stro
 </div>
 """, unsafe_allow_html=True)
 
-# ── LIVE CHART ────────────────────────────────────────────────────────────────
-st.markdown('<hr class="sec-rule">', unsafe_allow_html=True)
-st.markdown("## Live Kursverlauf — JEPI & SPY (seit Auflage Mai 2020)")
-
-live_data, live_err = load_live()
-
-if live_data is not None and not live_data.empty:
-    jepi_now = float(live_data["JEPI"].iloc[-1])
-    spy_now  = float(live_data["SPY"].iloc[-1])
-    jepi_chg = float((live_data["JEPI"].iloc[-1]/live_data["JEPI"].iloc[-2]-1)*100)
-    spy_chg  = float((live_data["SPY"].iloc[-1]/live_data["SPY"].iloc[-2]-1)*100)
-
-    mc1,mc2,mc3 = st.columns([1,1,3])
-    mc1.metric("JEPI", f"${jepi_now:.2f}", f"{jepi_chg:+.2f} % (1T)")
-    mc2.metric("SPY",  f"${spy_now:.2f}",  f"{spy_chg:+.2f} % (1T)")
-    mc3.markdown(
-        f"<p style='color:{MUTED};font-size:0.9rem;padding-top:20px;'>"
-        f"Letzter Datenpunkt: {live_data.index[-1].strftime('%d.%m.%Y')} · "
-        "Live-Daten via Yahoo Finance · Aktualisierung alle 5 Minuten</p>",
-        unsafe_allow_html=True,
-    )
-    bj = live_data["JEPI"].iloc[0]; bs_ = live_data["SPY"].iloc[0]
-    fig_live = go.Figure()
-    fig_live.add_trace(go.Scatter(
-        x=live_data.index, y=live_data["JEPI"]/bj*100, name="JEPI",
-        line=dict(color="#58a6ff", width=2.8),
-        fill="tozeroy", fillcolor="rgba(31,111,235,0.10)",
-    ))
-    fig_live.add_trace(go.Scatter(
-        x=live_data.index, y=live_data["SPY"]/bs_*100, name="SPY",
-        line=dict(color=CS, width=2.2, dash="dot"),
-    ))
-    fig_live.update_layout(**lo(h=440, title="Gesamtrendite indexiert (Basis = 100, seit Mai 2020)"))
-    fig_live.update_layout(xaxis_title="Datum", yaxis_title="Indexiert (Basis = 100)")
-    st.plotly_chart(fig_live, use_container_width=True)
-else:
-    st.warning(f"Live-Daten nicht verfügbar ({live_err}). Offline-Daten werden angezeigt.")
-    tr = daily[["JEPI_tr","SPY_tr"]].dropna()
-    bj = tr["JEPI_tr"].iloc[0]; bs_ = tr["SPY_tr"].iloc[0]
-    fig_off = go.Figure()
-    fig_off.add_trace(go.Scatter(x=tr.index, y=tr["JEPI_tr"]/bj*100, name="JEPI",
-        line=dict(color="#58a6ff", width=2.8)))
-    fig_off.add_trace(go.Scatter(x=tr.index, y=tr["SPY_tr"]/bs_*100, name="SPY",
-        line=dict(color=CS, width=2, dash="dot")))
-    fig_off.update_layout(**lo(h=440, title="Gesamtrendite indexiert (Basis = 100, CSV-Daten)"))
-    fig_off.update_layout(xaxis_title="Datum", yaxis_title="Indexiert (Basis = 100)")
-    st.plotly_chart(fig_off, use_container_width=True)
-
-# ── ABBILDUNG 1 ───────────────────────────────────────────────────────────────
+# ── ABBILDUNG 1 — AUSSCHÜTTUNGSREKONSTRUKTION ─────────────────────────────────
 st.markdown('<hr class="sec-rule">', unsafe_allow_html=True)
 st.markdown("## Abbildung 1 — Ausschüttungsrekonstruktion")
 
-m1a,m1b,m1c = st.columns(3)
+m1a, m1b, m1c = st.columns(3)
 m1a.metric("Zeitliche Korrelation",  f"{T2['corr']:.3f}")
 m1b.metric("Mittleres Verhältnis",   f"{T2['rom']:.1%}")
 m1c.metric("Erklärte Ausschüttung", "~57 %")
@@ -444,7 +486,51 @@ with col_f1b:
     st.caption("Tabelle 3 — Sensitivitätsgitter (★ = Zentralfall)")
     st.dataframe(t3_df.style.apply(_hl3, axis=None), hide_index=True, use_container_width=True)
 
-# ── ABBILDUNG 2 ───────────────────────────────────────────────────────────────
+# ── VRP VISUALISIERUNG ────────────────────────────────────────────────────────
+st.markdown('<hr class="sec-rule">', unsafe_allow_html=True)
+st.markdown("## Volatilitätsrisikoprämie (VRP) — Das Herzstück von JEPIs Strategie")
+
+vrp_m = monthly[["VIX_ms","VRP_m"]].dropna().copy()
+vrp_m["VIX_pct"] = vrp_m["VIX_ms"] * 100
+vrp_m["RV_pct"]  = (vrp_m["VIX_ms"] - vrp_m["VRP_m"]) * 100
+
+v_col1, v_col2 = st.columns([2.2, 1])
+with v_col1:
+    fig_vrp = go.Figure()
+    fig_vrp.add_trace(go.Scatter(
+        x=vrp_m.index, y=vrp_m["RV_pct"],
+        name="Realisierte Volatilität", line=dict(color="#58a6ff", width=2, dash="dash")))
+    fig_vrp.add_trace(go.Scatter(
+        x=vrp_m.index, y=vrp_m["VIX_pct"],
+        name="VIX (implizite Volatilität)",
+        fill="tonexty", fillcolor="rgba(200,16,46,0.20)",
+        line=dict(color=CS, width=2.5)))
+    avg_vrp = float(vrp_m["VRP_m"].mean() * 100)
+    fig_vrp.add_annotation(
+        x=0.02, y=0.95, xref="paper", yref="paper",
+        text=f"Ø VRP: {avg_vrp:.1f} Pp. — schraffierte Fläche = vereinnahmte Prämie",
+        font=dict(size=12, color=CS), bgcolor=BG2, bordercolor=BD, borderwidth=1,
+        showarrow=False, xanchor="left")
+    fig_vrp.update_layout(**lo(h=380, title="VIX vs. Realisierte Volatilität (monatlich, ann.)"))
+    fig_vrp.update_layout(xaxis_title="Datum", yaxis_title="Volatilität (ann., %)")
+    fig_vrp.update_yaxes(ticksuffix=" %")
+    st.plotly_chart(fig_vrp, use_container_width=True)
+
+with v_col2:
+    st.markdown("""
+<div class="info">
+<strong>VRP = VIX − Realisierte Vola</strong><br><br>
+Die schraffierte Fläche zwischen VIX und realisierter Vola ist die
+<em>Prämie</em>, die JEPI durch Call-Verkäufe vereinnahmt.<br><br>
+&bull;&nbsp; Ø VIX&nbsp;  ≈ 20,2 %<br>
+&bull;&nbsp; Ø RV &nbsp;&nbsp; ≈ 15,8 %<br>
+&bull;&nbsp; Ø VRP ≈ &nbsp;4,4 Pp.<br><br>
+Entscheidend: Die VRP ist <em>nicht konstant</em>.
+Tabelle 5 zeigt, wie stark dies die optimale JEPI-Allokation verändert.
+</div>
+    """, unsafe_allow_html=True)
+
+# ── ABBILDUNG 2 — JAHRESRENDITEN ──────────────────────────────────────────────
 st.markdown('<hr class="sec-rule">', unsafe_allow_html=True)
 st.markdown("## Abbildung 2 — Jahresrenditen: JEPI vs. SPY")
 
@@ -454,11 +540,11 @@ fig2 = go.Figure()
 fig2.add_trace(go.Bar(x=years, y=ann["JEPI"], name="JEPI", marker_color=CJ, offsetgroup=0,
     text=[f"{v:.1f}%" for v in ann["JEPI"]], textposition="outside",
     textfont=dict(size=12, color="#93c5fd")))
-fig2.add_trace(go.Bar(x=years, y=ann["SPY"], name="SPY", marker_color=CS, offsetgroup=1,
-    text=[f"{v:.1f}%" for v in ann["SPY"]], textposition="outside",
+fig2.add_trace(go.Bar(x=years, y=ann["SPY"],  name="SPY",  marker_color=CS, offsetgroup=1,
+    text=[f"{v:.1f}%" for v in ann["SPY"]],  textposition="outside",
     textfont=dict(size=12, color="#fca5a5")))
 fig2.add_hline(y=0, line_color=TXT, line_width=0.8)
-for yr,note in [("2020","* Mai–Dez."),("2026","* Jan.–Mai")]:
+for yr, note in [("2020","* Mai–Dez."),("2026","* Jan.–Mai")]:
     if yr in years:
         fig2.add_annotation(x=yr, y=float(min(ann.loc[int(yr)].min(),0))-9,
             text=note, showarrow=False, font=dict(size=10, color=MUTED))
@@ -467,7 +553,7 @@ fig2.update_layout(xaxis_title="Kalenderjahr", yaxis_title="Jahresrendite (%)", 
 fig2.update_yaxes(ticksuffix=" %")
 st.plotly_chart(fig2, use_container_width=True)
 
-cc1,cc2,cc3,cc4 = st.columns(4)
+cc1, cc2, cc3, cc4 = st.columns(4)
 cc1.metric("Aufwärts Capture",  f"{T4['up_cap']:.1%}", help=f"N={T4['up_n']} Monate")
 cc2.metric("Abwärts Capture",   f"{T4['dn_cap']:.1%}", help=f"N={T4['dn_n']} Monate")
 cc3.metric("Beta Aufwärts",     f"{T4['up_beta']:.3f}")
@@ -535,106 +621,54 @@ with sc2:
     fig_dd.update_yaxes(ticksuffix=" %")
     st.plotly_chart(fig_dd, use_container_width=True)
 
-# ── VRP VISUALISIERUNG ────────────────────────────────────────────────────────
-st.markdown('<hr class="sec-rule">', unsafe_allow_html=True)
-st.markdown("## Volatilitätsrisikoprämie (VRP) — Das Herzstück von JEPIs Strategie")
-
-vrp_m = monthly[["VIX_ms","VRP_m"]].dropna().copy()
-vrp_m["VIX_pct"] = vrp_m["VIX_ms"] * 100
-vrp_m["RV_pct"]  = (vrp_m["VIX_ms"] - vrp_m["VRP_m"]) * 100
-
-v_col1, v_col2 = st.columns([2.2, 1])
-with v_col1:
-    fig_vrp = go.Figure()
-    fig_vrp.add_trace(go.Scatter(
-        x=vrp_m.index, y=vrp_m["RV_pct"],
-        name="Realisierte Volatilität", line=dict(color="#58a6ff", width=2, dash="dash")))
-    fig_vrp.add_trace(go.Scatter(
-        x=vrp_m.index, y=vrp_m["VIX_pct"],
-        name="VIX (implizite Volatilität)",
-        fill="tonexty", fillcolor="rgba(200,16,46,0.20)",
-        line=dict(color=CS, width=2.5)))
-    avg_vrp = float(vrp_m["VRP_m"].mean() * 100)
-    fig_vrp.add_annotation(
-        x=0.02, y=0.95, xref="paper", yref="paper",
-        text=f"Ø VRP: {avg_vrp:.1f} Prozentpunkte — schraffierte Fläche = vereinnahmte Prämie",
-        font=dict(size=12, color=CS), bgcolor=BG2, bordercolor=BD, borderwidth=1,
-        showarrow=False, xanchor="left")
-    fig_vrp.update_layout(**lo(h=380, title="VIX vs. Realisierte Volatilität (monatlich, ann.)"))
-    fig_vrp.update_layout(xaxis_title="Datum", yaxis_title="Volatilität (ann., %)")
-    fig_vrp.update_yaxes(ticksuffix=" %")
-    st.plotly_chart(fig_vrp, use_container_width=True)
-
-with v_col2:
-    st.markdown("""
-<div class="info">
-<strong>VRP = VIX − Realisierte Vola</strong><br><br>
-Die schraffierte Fläche zwischen VIX und realisierter Vola ist die
-<em>Prämie</em>, die JEPI durch Call-Verkäufe vereinnahmt.<br><br>
-&bull;&nbsp; Ø VIX&nbsp;  ≈ 20,2 %<br>
-&bull;&nbsp; Ø RV &nbsp;&nbsp; ≈ 15,8 %<br>
-&bull;&nbsp; Ø VRP ≈ &nbsp;4,4 Pp.<br><br>
-Entscheidend: Die VRP ist <em>nicht konstant</em>.
-Tabelle 5 zeigt, wie stark dies die optimale JEPI-Allokation verändert.
-</div>
-    """, unsafe_allow_html=True)
-
-# ── ABBILDUNG 3 ───────────────────────────────────────────────────────────────
+# ── ABBILDUNG 3 — EFFIZIENZLINIE & VRP-REGIMES ───────────────────────────────
 st.markdown('<hr class="sec-rule">', unsafe_allow_html=True)
 st.markdown("## Abbildung 3 — Markowitz-Effizienzlinie & VRP-Regimes")
 
 col_left, col_right = st.columns([1, 1.6])
 
 with col_left:
-    st.markdown("**Volatilitätsrisikoprämie (VRP)**")
-    st.markdown("""
-**VRP = VIX − Realisierte Volatilität**
-
-- **Hohe VRP** → Optionen teuer → JEPI kassiert attraktive Prämien
-- **Niedrige VRP** → Prämien kompensieren das Risiko kaum
-    """)
     st.markdown("**Tabelle 5 — Max-Sharpe-Gewichte nach VRP-Regime**")
     t5_df = pd.DataFrame([{"Regime":lbl,"N":n,"SPY%":spy,"JEPI%":jepi,"Cash%":cash,"Sharpe":sr}
                            for lbl,n,spy,jepi,_,cash,sr in T5])
     def _hl5(df):
         s = pd.DataFrame("", index=df.index, columns=df.columns)
-        for i,row in t5_df.iterrows():
-            if row["JEPI%"]>0:
-                s.at[i,"JEPI%"]="background-color:#1a3a6e;font-weight:700;color:#93c5fd"
+        for i, row in t5_df.iterrows():
+            if row["JEPI%"] > 0:
+                s.at[i,"JEPI%"] = "background-color:#1a3a6e;font-weight:700;color:#93c5fd"
         return s
     st.dataframe(
-        t5_df.style.apply(_hl5,axis=None)
+        t5_df.style.apply(_hl5, axis=None)
              .format({"SPY%":"{:.1f}","JEPI%":"{:.1f}","Cash%":"{:.1f}","Sharpe":"{:.2f}"}),
         hide_index=True, use_container_width=True,
     )
 
     fig_w = go.Figure()
-    for asset,col_c,vals in [("SPY",CS,[r[2] for r in T5]),
-                               ("JEPI","#58a6ff",[r[3] for r in T5]),
-                               ("Cash",CC,[r[5] for r in T5])]:
+    for asset, col_c, vals in [("SPY",  CS,        [r[2] for r in T5]),
+                                ("JEPI", "#58a6ff", [r[3] for r in T5]),
+                                ("Cash", CC,        [r[5] for r in T5])]:
         fig_w.add_trace(go.Bar(name=asset, x=[r[0] for r in T5], y=vals, marker_color=col_c))
     fig_w.update_layout(**lo(h=240))
-    fig_w.update_layout(barmode="stack", hovermode="x unified",
-                        yaxis_title="Gewichtung (%)")
+    fig_w.update_layout(barmode="stack", hovermode="x unified", yaxis_title="Gewichtung (%)")
     fig_w.update_yaxes(ticksuffix=" %")
     fig_w.update_xaxes(tickfont=dict(size=9))
     st.plotly_chart(fig_w, use_container_width=True)
 
 with col_right:
     with st.spinner("Berechne Effizienzlinie …"):
-        mu,vols_i,rf,bw,bsr,fv,fr,vt,rt = frontier(monthly)
+        mu, vols_i, rf, bw, bsr, fv, fr, vt, rt = frontier(monthly)
 
     fig3 = go.Figure()
-    if len(fv)>1:
+    if len(fv) > 1:
         fig3.add_trace(go.Scatter(x=np.array(fv)*100, y=np.array(fr)*100,
             mode="lines", name="Effizienzlinie (Long-only)",
             line=dict(color="#58a6ff", width=2.8)))
-    if vt>0:
+    if vt > 0:
         cal_v = np.linspace(0, vt*1.8, 60)
         fig3.add_trace(go.Scatter(x=cal_v*100, y=(rf+(rt-rf)/vt*cal_v)*100,
             mode="lines", name="Capital Allocation Line",
             line=dict(color="#9b59b6", width=1.8, dash="dash"), opacity=0.85))
-    for nm,av,ar,ac in zip(["JEPI","SPY","AGG"], vols_i*100, mu*100, [CJ,CS,CA]):
+    for nm, av, ar, ac in zip(["JEPI","SPY","AGG"], vols_i*100, mu*100, [CJ,CS,CA]):
         fig3.add_trace(go.Scatter(x=[av], y=[ar], mode="markers+text", name=nm,
             text=[f"  {nm}"], textposition="middle right",
             marker=dict(color=ac, size=14, line=dict(color="white",width=1.5)),
@@ -646,7 +680,7 @@ with col_right:
     fig3.add_trace(go.Scatter(x=[0], y=[rf*100], mode="markers+text",
         text=[f"  RF ({rf*100:.1f}%)"], textposition="middle right",
         marker=dict(color=CC, size=10, symbol="diamond"),
-        textfont=dict(size=11,color=MUTED), showlegend=False))
+        textfont=dict(size=11, color=MUTED), showlegend=False))
     fig3.update_layout(**lo(h=530, title="Effizienzlinie: SPY, JEPI, AGG + Cash (Long-only)"))
     fig3.update_layout(xaxis_title="Ann. Volatilität (%)", yaxis_title="Ann. Erwartungsrendite (%)",
                        hovermode="closest", legend=dict(font=dict(size=11)))
@@ -661,15 +695,28 @@ JEPI ist ein konditionaler Diversifikationsbaustein — kein universelles Einkom
 </div>
 """, unsafe_allow_html=True)
 
-# ── $10.000 ANLEGER-PERSPEKTIVE ───────────────────────────────────────────────
+# ── ANLEGER-PERSPEKTIVE ───────────────────────────────────────────────────────
 st.markdown('<hr class="sec-rule">', unsafe_allow_html=True)
-st.markdown("## Anleger-Perspektive: $10.000 investiert seit Mai 2020")
+st.markdown("## Anleger-Perspektive: Was wäre aus Ihrer Investition geworden?")
 
-idx_10k, j_px_val, j_div_val, spy_val = compute_10k(daily)
+amt_col, _ = st.columns([1, 2])
+with amt_col:
+    invest_amt = st.number_input(
+        "Anfangsinvestition in USD (Mai 2020) — Betrag frei wählbar",
+        min_value=1,
+        max_value=10_000_000,
+        value=100,
+        step=100,
+        format="%d",
+        help="Alle Zahlen — Kapitalwert, Ausschüttungen und SPY-Vergleich — aktualisieren sich automatisch.",
+    )
+
+idx_10k, j_px_val, j_div_val, spy_val = compute_10k(daily, initial=float(invest_amt))
 final_j_price = float(j_px_val.iloc[-1])
 final_j_divs  = float(j_div_val.iloc[-1])
 final_j_total = final_j_price + final_j_divs
 final_spy     = float(spy_val.iloc[-1])
+gap           = final_spy - final_j_total
 
 fig_10k = go.Figure()
 fig_10k.add_trace(go.Scatter(
@@ -679,19 +726,19 @@ fig_10k.add_trace(go.Scatter(
     line=dict(color=CJ, width=2.0)))
 fig_10k.add_trace(go.Scatter(
     x=idx_10k, y=j_px_val + j_div_val,
-    name=f"JEPI — Gesamt inkl. kumulierter Ausschüttungen (${final_j_divs:,.0f} bar)",
+    name="JEPI — Gesamt inkl. kumulierter Ausschüttungen",
     fill="tonexty", fillcolor="rgba(88,166,255,0.28)",
     line=dict(color="#58a6ff", width=3.0)))
 fig_10k.add_trace(go.Scatter(
     x=idx_10k, y=spy_val,
     name="SPY — Total Return (Dividenden reinvestiert)",
     line=dict(color=CS, width=3.2, dash="dot")))
-fig_10k.add_hline(y=10_000, line_color=MUTED, line_width=1, line_dash="dash")
-fig_10k.add_annotation(x=0.01, y=10_000, xref="paper", yref="y",
-    text="Anfangsinvestition $10.000", font=dict(size=10, color=MUTED),
+fig_10k.add_hline(y=float(invest_amt), line_color=MUTED, line_width=1, line_dash="dash")
+fig_10k.add_annotation(x=0.01, y=float(invest_amt), xref="paper", yref="y",
+    text=f"Anfangsinvestition ${invest_amt:,}", font=dict(size=10, color=MUTED),
     showarrow=False, yanchor="bottom", xanchor="left")
 fig_10k.add_annotation(
-    x=idx_10k[-1], y=final_j_total + 200,
+    x=idx_10k[-1], y=final_j_total + max(final_j_total*0.03, 1),
     text=f"JEPI gesamt: ${final_j_total:,.0f}",
     showarrow=True, arrowhead=2, ax=-150, ay=-40,
     font=dict(size=12, color="#58a6ff"), bgcolor=BG2, bordercolor="#58a6ff", borderwidth=1)
@@ -700,46 +747,107 @@ fig_10k.add_annotation(
     text=f"SPY: ${final_spy:,.0f}",
     showarrow=True, arrowhead=2, ax=-110, ay=50,
     font=dict(size=12, color=CS), bgcolor=BG2, bordercolor=CS, borderwidth=1)
-fig_10k.update_layout(**lo(h=510, title="$10.000 Anfangsinvestition Mai 2020 — Kapitalwert + kumulierte Ausschüttungen vs. SPY"))
+fig_10k.update_layout(**lo(h=510,
+    title=f"${invest_amt:,} Anfangsinvestition Mai 2020 — Kapitalwert + Ausschüttungen vs. SPY"))
 fig_10k.update_layout(xaxis_title="Datum", yaxis_title="Wert (USD)")
 fig_10k.update_yaxes(tickprefix="$", tickformat=",.0f")
 st.plotly_chart(fig_10k, use_container_width=True)
 
 inv1, inv2, inv3 = st.columns(3)
 inv1.metric("JEPI Kapitalwert (Kurs)", f"${final_j_price:,.0f}",
-            delta=f"{final_j_price/10000-1:+.1%} auf das investierte Kapital")
+            delta=f"{final_j_price/invest_amt-1:+.1%}")
 inv2.metric("JEPI kumulierte Ausschüttungen", f"${final_j_divs:,.0f}",
-            help="Bare Auszahlungen, nicht reinvestiert — ca. 199 Anteile × $28,87 Gesamtdividende")
-inv3.metric("SPY Total Return (reinvestiert)", f"${final_spy:,.0f}",
-            delta=f"{final_spy/10000-1:+.1%} auf das investierte Kapital")
+            help="Bare Auszahlungen, nicht reinvestiert")
+inv3.metric("SPY Total Return", f"${final_spy:,.0f}",
+            delta=f"{final_spy/invest_amt-1:+.1%}")
 
-j_ret_pct  = (final_j_total / 10_000 - 1) * 100
-spy_ret_pct = (final_spy    / 10_000 - 1) * 100
-gap         = final_spy - final_j_total
+j_ret_pct   = (final_j_total / invest_amt - 1) * 100
+spy_ret_pct = (final_spy     / invest_amt - 1) * 100
 st.markdown(f"""
 <div class="note">
-<strong>Die zentrale Botschaft:</strong> JEPI zahlte ${final_j_divs:,.0f} in bar aus — das klingt nach
-echtem Einkommen. Doch der Kapitalwert liegt bei nur ${final_j_price:,.0f}. Selbst wenn man
-alle Ausschüttungen addiert, kommt JEPI auf ${final_j_total:,.0f} (+{j_ret_pct:.0f}&thinsp;%).
-<strong>SPY erreicht ${final_spy:,.0f} (+{spy_ret_pct:.0f}&thinsp;%)</strong> — rund
-<strong>${gap:,.0f} mehr</strong>. Die monatlichen Ausschüttungen sind keine Zugabe —
+<strong>Die zentrale Botschaft:</strong> Aus ${invest_amt:,} wurden bei JEPI
+${final_j_divs:,.0f} an Ausschüttungen in bar ausgezahlt — das klingt nach echtem Einkommen.
+Doch der Kapitalwert liegt bei nur ${final_j_price:,.0f}. Addiert man alle Ausschüttungen,
+kommt JEPI auf ${final_j_total:,.0f} (+{j_ret_pct:.0f}&thinsp;%).
+<strong>SPY erreicht ${final_spy:,.0f} (+{spy_ret_pct:.0f}&thinsp;%)</strong> —
+rund <strong>${gap:,.0f} mehr</strong>. Die monatlichen Ausschüttungen sind keine Zugabe —
 sie <em>ersetzen</em> Kursgewinne, die beim SPY stattdessen verbleiben.
 </div>
 """, unsafe_allow_html=True)
+
+# ── FÜR WEN IST JEPI GEEIGNET? ────────────────────────────────────────────────
+st.markdown("---")
+st.markdown("### Für wen ist JEPI der richtige Baustein?")
+
+fit1, fit2, fit3 = st.columns(3)
+with fit1:
+    st.markdown(f"""
+<div class="fit-box" style="border-top:3px solid #3fb950;">
+  <div class="fit-head" style="color:#3fb950;">Gut geeignet</div>
+  <div class="fit-body">
+    <strong>Stiftungen &amp; Non-Profits</strong><br>
+    Benötigen regelmäßige Ausschüttungen zur Deckung laufender Kosten, ohne Kapital
+    veräußern zu müssen — JEPI liefert planbare monatliche Erträge.<br><br>
+    <strong>Kapitalentnahme-Portfolios</strong><br>
+    Anleger in der Entnahmephase, für die stetiger Cash-flow wichtiger ist
+    als maximale Gesamtrendite.<br><br>
+    <strong>Niedrig-VRP-Phasen</strong><br>
+    Wenn VRP unter dem Median liegt, empfiehlt das Markowitz-Modell
+    bis zu 46,4 % JEPI-Allokation (Sharpe 1,99).
+  </div>
+</div>
+    """, unsafe_allow_html=True)
+
+with fit2:
+    st.markdown(f"""
+<div class="fit-box" style="border-top:3px solid #f0883e;">
+  <div class="fit-head" style="color:#f0883e;">Bedingt geeignet</div>
+  <div class="fit-body">
+    <strong>Einkommens-orientierte Privatanleger</strong><br>
+    Für Investoren, die psychologisch von monatlichen Ausschüttungen profitieren —
+    sofern der Renditeabstand zu SPY bewusst akzeptiert wird.<br><br>
+    <strong>Taktische Beimischung</strong><br>
+    Als Satellitenbaustein neben Kern-Aktien-ETFs in Phasen
+    erhöhter Volatilität mit positiver VRP sinnvoll.<br><br>
+    <strong>Niedrigere Drawdown-Toleranz</strong><br>
+    Wer geringere Schwankungen einem höheren Ertragspotenzial vorzieht
+    (Max DD −13,7 % vs. −24,5 % bei SPY).
+  </div>
+</div>
+    """, unsafe_allow_html=True)
+
+with fit3:
+    st.markdown(f"""
+<div class="fit-box" style="border-top:3px solid #C8102E;">
+  <div class="fit-head" style="color:#C8102E;">Weniger geeignet</div>
+  <div class="fit-body">
+    <strong>Wachstumsorientierte Anleger</strong><br>
+    Wer langfristige Vermögensbildung anstrebt, verzichtet mit JEPI auf
+    ca. ${gap:,.0f} Gesamtertrag je ${invest_amt:,} investiertem Kapital
+    gegenüber SPY über 6 Jahre.<br><br>
+    <strong>Langfristiger Vermögensaufbau</strong><br>
+    Der Zinseszinseffekt durch reinvestierte Dividenden beim SPY
+    übertrifft die JEPI-Gesamtrendite systematisch über Zeit.<br><br>
+    <strong>Hohe-VRP-Regime</strong><br>
+    Das Modell empfiehlt in diesen Phasen <strong>0 % JEPI</strong>
+    (Sharpe nur 0,05 im hohen VRP-Terzil).
+  </div>
+</div>
+    """, unsafe_allow_html=True)
 
 # ── GESAMTFAZIT ───────────────────────────────────────────────────────────────
 st.markdown('<hr class="sec-rule">', unsafe_allow_html=True)
 st.markdown("## Gesamtfazit")
 
-c1,c2,c3 = st.columns(3)
-for col,(num,head,body) in zip([c1,c2,c3],[
-    ("Befund 1","Ausschüttungsrekonstruktion",
+c1, c2, c3 = st.columns(3)
+for col, (num, head, body) in zip([c1,c2,c3], [
+    ("Befund 1", "Ausschüttungsrekonstruktion",
      "Black-Scholes erklärt ~57 % der durchschnittlichen Ausschüttung (Korrelation 0,51). "
      "Die Prämie ist ökonomisch rekonstruierbar — JEPI glättet sie jedoch aktiv."),
-    ("Befund 2","Renditeprofil & Asymmetrie",
+    ("Befund 2", "Renditeprofil & Asymmetrie",
      "Capture Ratios ~59 % — symmetrisch. Abwärts-Beta (0,556) > Aufwärts-Beta (0,474), "
      "Asymmetrie 1,17×. Kein bedeutsamer Kapitalschutz beobachtbar."),
-    ("Befund 3","Markowitz-Allokation",
+    ("Befund 3", "Markowitz-Allokation",
      "0 % JEPI in der Gesamtstichprobe. Niedrig-VRP-Terzil: 46,4 % JEPI, Sharpe 1,99. "
      "JEPI ist ein konditionaler Baustein — kein universelles Einkommensinstrument."),
 ]):
@@ -749,6 +857,18 @@ for col,(num,head,body) in zip([c1,c2,c3],[
         f"<div class='conc-body'>{body}</div></div>",
         unsafe_allow_html=True,
     )
+
+st.markdown("""
+<div class="answer" style="margin-top:24px;">
+  <strong>Kurzantwort auf die Forschungsfrage:</strong><br><br>
+  JEPI generiert kein ökonomisch <em>neues</em> Einkommen — er verpackt Aktienrendite um.
+  Die monatlichen Ausschüttungen werden strukturell durch den Verzicht auf Kursgewinne
+  oberhalb des Optionsstrikes finanziert. Wer alle Erträge summiert, liegt mit JEPI
+  systematisch hinter dem SPY. Als <em>konditionaler</em> Baustein — insbesondere
+  in Niedrig-VRP-Regimes und für institutionelle Anleger mit Ausschüttungsbedarf
+  (Stiftungen, Entnahmephasen) — kann JEPI jedoch gezielt eingesetzt werden.
+</div>
+""", unsafe_allow_html=True)
 
 st.markdown(
     f"<p style='text-align:center;color:{MUTED};font-size:0.85rem;margin-top:3rem;'>"
