@@ -40,6 +40,13 @@ st.markdown("""
   .kpi-val { font-size:2.3rem; font-weight:800; color:#58a6ff; }
   .kpi-lbl { font-size:0.85rem; color:#8b949e; margin-top:6px; }
 
+  .kpi-box { background:#161b22; border:1px solid #30363d; border-radius:10px;
+             padding:18px 16px; text-align:center; margin-bottom:8px; }
+  .kpi-box .kpi-label { font-size:0.82rem; color:#8b949e; text-transform:uppercase;
+                         letter-spacing:0.05em; margin-bottom:6px; }
+  .kpi-box .kpi-value { font-size:1.6rem; font-weight:800; color:#58a6ff; margin-bottom:4px; }
+  .kpi-box .kpi-sub   { font-size:0.85rem; color:#aff1b6; }
+
   .find   { background:#0d2a1a; border-left:5px solid #3fb950; border-radius:0 8px 8px 0;
             padding:14px 18px; margin:12px 0; font-size:1.05rem; color:#aff1b6; }
   .note   { background:#2a1a0d; border-left:5px solid #f0883e; border-radius:0 8px 8px 0;
@@ -615,68 +622,70 @@ st.plotly_chart(fig_dd, use_container_width=True)
 st.markdown('<hr class="sec-rule">', unsafe_allow_html=True)
 st.markdown("## Abbildung 3 — Markowitz-Effizienzlinie & VRP-Regimes")
 
-col_left, col_right = st.columns([1, 1.6])
+with st.spinner("Berechne Effizienzlinie …"):
+    mu, vols_i, rf, bw, bsr, fv, fr, vt, rt = frontier(monthly)
 
-with col_left:
-    st.markdown("**Tabelle 5 — Max-Sharpe-Gewichte nach VRP-Regime**")
-    rd = regime_frontier(monthly)  # (label, N, SPY%, JEPI%, AGG%, Sharpe)
-    t5_df = pd.DataFrame([{"Regime":lbl,"N":n,"SPY%":spy,"JEPI%":jepi,"AGG%":agg,"Sharpe":sr}
-                           for lbl,n,spy,jepi,agg,sr in rd])
-    def _hl5(df):
-        s = pd.DataFrame("", index=df.index, columns=df.columns)
-        for i, row in t5_df.iterrows():
-            if row["JEPI%"] > 0:
-                s.at[i,"JEPI%"] = "background-color:#1a3a6e;font-weight:700;color:#93c5fd"
-        return s
-    st.dataframe(
-        t5_df.style.apply(_hl5, axis=None)
-             .format({"SPY%":"{:.1f}","JEPI%":"{:.1f}","AGG%":"{:.1f}","Sharpe":"{:.2f}"}),
-        hide_index=True, use_container_width=True,
-    )
+# Min-Var-Portfolio bei JEPI's Rendite-Niveau
+_jepi_ret = mu[0]
+_res_mv = minimize(
+    lambda w: float(w @ (monthly[["JEPI_ret","SPY_ret","AGG_ret"]].dropna().cov().values*12) @ w)**0.5,
+    x0=np.array([0.33,0.33,0.34]), method="SLSQP", bounds=[(0,1)]*3,
+    constraints=[{"type":"eq","fun":lambda w:w.sum()-1},
+                 {"type":"ineq","fun":lambda w:float(w@mu)-_jepi_ret}],
+    options={"ftol":1e-14,"maxiter":5000})
+_mv_vol = _res_mv.fun*100 if _res_mv.success else vols_i[0]*100
+_mv_w   = _res_mv.x if _res_mv.success else np.array([1,0,0])
+_jepi_sharpe = (mu[0]-rf)/vols_i[0]
+_spy_sharpe  = (mu[1]-rf)/vols_i[1]
 
-    fig_w = go.Figure()
-    for asset, col_c, idx in [("SPY",  CS,        2),
-                               ("JEPI", "#58a6ff", 3),
-                               ("AGG",  CA,        4)]:
-        fig_w.add_trace(go.Bar(name=asset, x=[r[0] for r in rd], y=[r[idx] for r in rd], marker_color=col_c))
-    fig_w.update_layout(**lo(h=240))
-    fig_w.update_layout(barmode="stack", hovermode="x unified", yaxis_title="Gewichtung (%)")
-    fig_w.update_yaxes(ticksuffix=" %")
-    fig_w.update_xaxes(tickfont=dict(size=9))
-    st.plotly_chart(fig_w, use_container_width=True)
+fig3 = go.Figure()
+if len(fv) > 1:
+    fig3.add_trace(go.Scatter(x=np.array(fv)*100, y=np.array(fr)*100,
+        mode="lines", name="Effizienzlinie (Long-only)",
+        line=dict(color="#58a6ff", width=2.8)))
+if vt > 0:
+    cal_v = np.linspace(0, vt*1.8, 60)
+    fig3.add_trace(go.Scatter(x=cal_v*100, y=(rf+(rt-rf)/vt*cal_v)*100,
+        mode="lines", name="Capital Allocation Line",
+        line=dict(color="#9b59b6", width=1.8, dash="dash"), opacity=0.85))
+for nm, av, ar, ac in zip(["JEPI","SPY","AGG"], vols_i*100, mu*100, [CJ,CS,CA]):
+    fig3.add_trace(go.Scatter(x=[av], y=[ar], mode="markers+text", name=nm,
+        text=[f"  {nm}"], textposition="middle right",
+        marker=dict(color=ac, size=14, line=dict(color="white",width=1.5)),
+        textfont=dict(size=13)))
+fig3.add_trace(go.Scatter(x=[vt*100], y=[rt*100], mode="markers",
+    name=f"Tangenzportfolio (Sharpe ≈ {bsr:.2f})",
+    marker=dict(color="gold", size=20, symbol="star",
+                line=dict(color="#374151",width=1.5))))
+fig3.add_trace(go.Scatter(x=[0], y=[rf*100], mode="markers+text",
+    text=[f"  RF ({rf*100:.1f}%)"], textposition="middle right",
+    marker=dict(color=CC, size=10, symbol="diamond"),
+    textfont=dict(size=11, color=MUTED), showlegend=False))
+fig3.update_layout(**lo(h=500, title="Effizienzlinie: SPY, JEPI, AGG (Long-only)"))
+fig3.update_layout(xaxis_title="Ann. Volatilität (%)", yaxis_title="Ann. Erwartungsrendite (%)",
+                   hovermode="closest", legend=dict(font=dict(size=11)))
+fig3.update_xaxes(ticksuffix=" %"); fig3.update_yaxes(ticksuffix=" %")
+st.plotly_chart(fig3, use_container_width=True)
 
-with col_right:
-    with st.spinner("Berechne Effizienzlinie …"):
-        mu, vols_i, rf, bw, bsr, fv, fr, vt, rt = frontier(monthly)
-
-    fig3 = go.Figure()
-    if len(fv) > 1:
-        fig3.add_trace(go.Scatter(x=np.array(fv)*100, y=np.array(fr)*100,
-            mode="lines", name="Effizienzlinie (Long-only)",
-            line=dict(color="#58a6ff", width=2.8)))
-    if vt > 0:
-        cal_v = np.linspace(0, vt*1.8, 60)
-        fig3.add_trace(go.Scatter(x=cal_v*100, y=(rf+(rt-rf)/vt*cal_v)*100,
-            mode="lines", name="Capital Allocation Line",
-            line=dict(color="#9b59b6", width=1.8, dash="dash"), opacity=0.85))
-    for nm, av, ar, ac in zip(["JEPI","SPY","AGG"], vols_i*100, mu*100, [CJ,CS,CA]):
-        fig3.add_trace(go.Scatter(x=[av], y=[ar], mode="markers+text", name=nm,
-            text=[f"  {nm}"], textposition="middle right",
-            marker=dict(color=ac, size=14, line=dict(color="white",width=1.5)),
-            textfont=dict(size=13)))
-    fig3.add_trace(go.Scatter(x=[vt*100], y=[rt*100], mode="markers",
-        name=f"Tangenzportfolio (Sharpe ≈ {bsr:.2f})",
-        marker=dict(color="gold", size=20, symbol="star",
-                    line=dict(color="#374151",width=1.5))))
-    fig3.add_trace(go.Scatter(x=[0], y=[rf*100], mode="markers+text",
-        text=[f"  RF ({rf*100:.1f}%)"], textposition="middle right",
-        marker=dict(color=CC, size=10, symbol="diamond"),
-        textfont=dict(size=11, color=MUTED), showlegend=False))
-    fig3.update_layout(**lo(h=530, title="Effizienzlinie: SPY, JEPI, AGG (Long-only)"))
-    fig3.update_layout(xaxis_title="Ann. Volatilität (%)", yaxis_title="Ann. Erwartungsrendite (%)",
-                       hovermode="closest", legend=dict(font=dict(size=11)))
-    fig3.update_xaxes(ticksuffix=" %"); fig3.update_yaxes(ticksuffix=" %")
-    st.plotly_chart(fig3, use_container_width=True)
+k1, k2, k3 = st.columns(3)
+with k1:
+    st.markdown(f"""<div class="kpi-box">
+        <div class="kpi-label">Tangenzportfolio</div>
+        <div class="kpi-value">100 % SPY</div>
+        <div class="kpi-sub">Sharpe {_spy_sharpe:.2f} — höchste risikoadjustierte Rendite</div>
+    </div>""", unsafe_allow_html=True)
+with k2:
+    st.markdown(f"""<div class="kpi-box">
+        <div class="kpi-label">JEPI vs. Effizienzlinie</div>
+        <div class="kpi-value">−{(vols_i[0]-_res_mv.fun)*100:.2f} Pp. Vola</div>
+        <div class="kpi-sub">Sharpe {_jepi_sharpe:.2f} — knapp unterhalb der Frontier</div>
+    </div>""", unsafe_allow_html=True)
+with k3:
+    st.markdown(f"""<div class="kpi-box">
+        <div class="kpi-label">Min-Var bei JEPI-Rendite</div>
+        <div class="kpi-value">σ = {_mv_vol:.1f} %</div>
+        <div class="kpi-sub">{_mv_w[0]*100:.0f} % JEPI · {_mv_w[1]*100:.0f} % SPY · {_mv_w[2]*100:.0f} % AGG</div>
+    </div>""", unsafe_allow_html=True)
 
 st.markdown("""
 <div class="find">
