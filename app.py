@@ -546,14 +546,19 @@ with v_col1:
 with v_col2:
     st.markdown("""
 <div class="info">
-<strong>VRP = VIX − Realisierte Vola</strong><br><br>
-Die schraffierte Fläche zwischen VIX und realisierter Vola ist die
-<em>Prämie</em>, die JEPI durch Call-Verkäufe vereinnahmt.<br><br>
+<strong>VRP = VIX − σ<sub>real</sub></strong><br><br>
 &bull;&nbsp; Ø VIX&nbsp;  ≈ 20,2 %<br>
-&bull;&nbsp; Ø RV &nbsp;&nbsp; ≈ 15,8 %<br>
+&bull;&nbsp; Ø σ<sub>real</sub> ≈ 15,8 %<br>
 &bull;&nbsp; Ø VRP ≈ &nbsp;4,4 Pp.<br><br>
-Entscheidend: Die VRP ist <em>nicht konstant</em>.
-Tabelle 5 zeigt, wie stark dies die optimale JEPI-Allokation verändert.
+<strong>Verbindung zur Optionsprämie:</strong><br>
+Black-Scholes bewertet JEPIs Calls mit σ&nbsp;=&nbsp;VIX.
+Weil VIX&nbsp;&gt;&nbsp;σ<sub>real</sub>, sind die Calls
+<em>systematisch überbewertet</em> — JEPI kassiert diese
+Überprämie (VRP&nbsp;&gt;&nbsp;0).<br><br>
+<span style="font-family:monospace;font-size:0.95em;">
+C(σ=VIX) &gt; C(σ=σ<sub>real</sub>)<br>
+⟹ Prämie ∝ VRP
+</span>
 </div>
     """, unsafe_allow_html=True)
 
@@ -676,9 +681,9 @@ with k1:
     </div>""", unsafe_allow_html=True)
 with k2:
     st.markdown(f"""<div class="kpi-box">
-        <div class="kpi-label">JEPI vs. Effizienzlinie</div>
-        <div class="kpi-value">−{(vols_i[0]-_res_mv.fun)*100:.2f} Pp. Vola</div>
-        <div class="kpi-sub">Sharpe {_jepi_sharpe:.2f} — knapp unterhalb der Frontier</div>
+        <div class="kpi-label">JEPI — Rendite &amp; Risiko</div>
+        <div class="kpi-value">{mu[0]*100:.1f} % | {vols_i[0]*100:.1f} %</div>
+        <div class="kpi-sub">Rendite | Vola &nbsp;·&nbsp; Frontier bei gleicher Rendite: σ = {_mv_vol:.1f} %</div>
     </div>""", unsafe_allow_html=True)
 with k3:
     st.markdown(f"""<div class="kpi-box">
@@ -687,11 +692,12 @@ with k3:
         <div class="kpi-sub">{_mv_w[0]*100:.0f} % JEPI · {_mv_w[1]*100:.0f} % SPY · {_mv_w[2]*100:.0f} % AGG</div>
     </div>""", unsafe_allow_html=True)
 
-st.markdown("""
+st.markdown(f"""
 <div class="find">
-<strong>Befund 3:</strong> Gesamtstichprobe: <strong>0 % JEPI-Allokation</strong>.
-Niedrig-VRP-Terzil: <strong>46,4 % JEPI</strong> (Sharpe 1,99).
-JEPI ist ein konditionaler Diversifikationsbaustein — kein universelles Einkommensinstrument.
+<strong>Befund 3:</strong> Tangenzportfolio = <strong>100 % SPY</strong> (Sharpe {_spy_sharpe:.2f}).
+JEPI (Sharpe {_jepi_sharpe:.2f}) liegt knapp unterhalb der Effizienzlinie —
+bei gleicher Rendite ({mu[0]*100:.1f} %) wäre eine Volatilität von {_mv_vol:.1f} % erreichbar (JEPI: {vols_i[0]*100:.1f} %).
+Im Gesamtzeitraum bietet JEPI <strong>keinen mean-variance Mehrwert</strong> gegenüber SPY.
 </div>
 """, unsafe_allow_html=True)
 
@@ -774,9 +780,9 @@ for col, (num, head, body) in zip([c1,c2,c3], [
     ("Befund 2", "Renditeprofil & Asymmetrie",
      "Capture Ratios ~59 % — symmetrisch. Abwärts-Beta (0,556) > Aufwärts-Beta (0,474), "
      "Asymmetrie 1,17×. Kein bedeutsamer Kapitalschutz beobachtbar."),
-    ("Befund 3", "Markowitz-Allokation",
-     "0 % JEPI in der Gesamtstichprobe. Niedrig-VRP-Terzil: 46,4 % JEPI, Sharpe 1,99. "
-     "JEPI ist ein konditionaler Baustein — kein universelles Einkommensinstrument."),
+    ("Befund 3", "Markowitz-Effizienzlinie",
+     "Tangenzportfolio = 100 % SPY (Sharpe 0,95). JEPI (Sharpe 0,74) liegt knapp "
+     "unterhalb der Effizienzlinie. Im Gesamtzeitraum kein mean-variance Mehrwert gegenüber SPY."),
 ]):
     col.markdown(
         f"<div class='conc'><div class='conc-num'>{num}</div>"
@@ -790,9 +796,10 @@ st.markdown("""
   JEPI generiert kein ökonomisch <em>neues</em> Einkommen — er verpackt Aktienrendite um.
   Die monatlichen Ausschüttungen werden strukturell durch den Verzicht auf Kursgewinne
   oberhalb des Optionsstrikes finanziert. Wer alle Erträge summiert, liegt mit JEPI
-  systematisch hinter dem SPY. Als <em>konditionaler</em> Baustein — insbesondere
-  in Niedrig-VRP-Regimes und für institutionelle Anleger mit Ausschüttungsbedarf
-  (Stiftungen, Entnahmephasen) — kann JEPI jedoch gezielt eingesetzt werden.
+  systematisch hinter dem SPY — das Tangenzportfolio allokiert 0 % in JEPI.
+  Als <em>konditionaler</em> Baustein für Anleger mit explizitem Ausschüttungsbedarf
+  (Stiftungen, Entnahmephasen) kann JEPI jedoch gezielt eingesetzt werden —
+  sofern die Volatilitätsrisikoprämie (VRP) dies rechtfertigt.
 </div>
 """, unsafe_allow_html=True)
 
