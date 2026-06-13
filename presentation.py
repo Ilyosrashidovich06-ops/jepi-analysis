@@ -198,31 +198,73 @@ def frontier(_m):
     cols = ["JEPI_ret","SPY_ret","AGG_ret"]; data = _m[cols].dropna()
     mu = data.mean().values*12; Sig = data.cov().values*12
     rf = float(_m["RF_m"].reindex(data.index).ffill().mean())
-    n = len(mu); mu_a = np.append(mu, rf)
-    Sa = np.block([[Sig, np.zeros((n,1))], [np.zeros((1,n)), np.array([[0.0]])]])
-    def ns(w):
-        v = max(float(w@Sa@w)**0.5, 1e-10)
-        return -(float(w@mu_a)-rf)/v
+    n = len(mu)  # 3 risky assets only — Cash is CAL anchor, not a holdable asset
+    def neg_sr(w):
+        vol = max(float(w@Sig@w)**0.5, 1e-10)
+        return -(float(w@mu)-rf)/vol
     best_sr, best_w = -np.inf, None
     rng = np.random.default_rng(42)
     for _ in range(30):
-        w0  = rng.dirichlet(np.ones(n+1))
-        res = minimize(ns, w0, method="SLSQP", bounds=[(0,1)]*(n+1),
+        w0  = rng.dirichlet(np.ones(n))
+        res = minimize(neg_sr, w0, method="SLSQP", bounds=[(0,1)]*n,
                        constraints=[{"type":"eq","fun":lambda w: w.sum()-1}],
                        options={"ftol":1e-12,"maxiter":2000})
         if res.success and -res.fun > best_sr:
             best_sr = -res.fun; best_w = res.x
+    # Efficient frontier: start at min-variance portfolio (classic banana shape)
+    res_mv = minimize(lambda w: float(w@Sig@w)**0.5, x0=np.ones(n)/n,
+                      method="SLSQP", bounds=[(0,1)]*n,
+                      constraints=[{"type":"eq","fun":lambda w: w.sum()-1}],
+                      options={"ftol":1e-12,"maxiter":2000})
+    mu_start = float(res_mv.x@mu) if res_mv.success else float(min(mu))
     fv, fr = [], []
-    for tgt in np.linspace(rf, float(max(mu_a))*0.99, 150):
-        res = minimize(lambda w: float(w@Sa@w)**0.5,
-                       x0=np.ones(n+1)/(n+1), method="SLSQP",
-                       bounds=[(0,1)]*(n+1),
+    for tgt in np.linspace(mu_start, float(max(mu))*0.999, 150):
+        res = minimize(lambda w: float(w@Sig@w)**0.5,
+                       x0=np.ones(n)/n, method="SLSQP", bounds=[(0,1)]*n,
                        constraints=[{"type":"eq",  "fun": lambda w: w.sum()-1},
-                                    {"type":"ineq","fun": lambda w, t=tgt: float(w@mu_a)-t}],
+                                    {"type":"ineq","fun": lambda w, t=tgt: float(w@mu)-t}],
                        options={"ftol":1e-12,"maxiter":2000})
-        if res.success: fv.append(float(res.fun)); fr.append(float(res.x@mu_a))
-    vt = float(np.sqrt(float(best_w@Sa@best_w))); rt = float(best_w@mu_a)
+        if res.success: fv.append(float(res.fun)); fr.append(float(res.x@mu))
+    vt = float(np.sqrt(float(best_w@Sig@best_w))); rt = float(best_w@mu)
     return mu, np.sqrt(np.diag(Sig)), rf, best_w, best_sr, np.array(fv), np.array(fr), vt, rt
+
+@st.cache_data
+def regime_frontier(_m):
+    cols = ["JEPI_ret","SPY_ret","AGG_ret"]; data = _m[cols].dropna()
+    rf_s = _m["RF_m"].reindex(data.index).ffill()
+    vrp  = _m["VRP_m"].reindex(data.index).ffill()
+    med  = vrp.median(); t1, t2 = vrp.quantile(1/3), vrp.quantile(2/3)
+    masks = [
+        ("Gesamtstichprobe",      None),
+        ("Niedr. VRP (≤ Median)", vrp <= med),
+        ("Hohe VRP (> Median)",   vrp > med),
+        ("Niedr. VRP (Terzil 1)", vrp <= t1),
+        ("Mittl. VRP (Terzil 2)", (vrp > t1) & (vrp <= t2)),
+        ("Hohe VRP (Terzil 3)",   vrp > t2),
+    ]
+    rng = np.random.default_rng(42); out = []
+    for label, mask in masks:
+        sub  = data if mask is None else data[mask]
+        rf_r = float(rf_s.mean() if mask is None else rf_s[mask].mean())
+        n_obs = len(sub)
+        if n_obs < 5:
+            out.append((label, n_obs, 0.0, 0.0, 0.0, 0.0)); continue
+        mu_r = sub.mean().values*12; Sig_r = sub.cov().values*12; n = len(mu_r)
+        def neg_sr(w, m=mu_r, S=Sig_r, r=rf_r):
+            vol = max(float(w@S@w)**0.5, 1e-10); return -(float(w@m)-r)/vol
+        bs, bw = -np.inf, np.ones(n)/n
+        for _ in range(30):
+            w0  = rng.dirichlet(np.ones(n))
+            res = minimize(neg_sr, w0, method="SLSQP", bounds=[(0,1)]*n,
+                          constraints=[{"type":"eq","fun":lambda w: w.sum()-1}],
+                          options={"ftol":1e-12,"maxiter":2000})
+            if res.success and -res.fun > bs: bs = -res.fun; bw = res.x
+        out.append((label, n_obs,
+                    round(bw[1]*100,1),   # SPY  (index 1)
+                    round(bw[0]*100,1),   # JEPI (index 0)
+                    round(bw[2]*100,1),   # AGG  (index 2)
+                    round(bs,2)))
+    return out
 
 def logo_html(path, width=190):
     if not os.path.exists(path): return ""
@@ -577,8 +619,9 @@ col_left, col_right = st.columns([1, 1.6])
 
 with col_left:
     st.markdown("**Tabelle 5 — Max-Sharpe-Gewichte nach VRP-Regime**")
-    t5_df = pd.DataFrame([{"Regime":lbl,"N":n,"SPY%":spy,"JEPI%":jepi,"Cash%":cash,"Sharpe":sr}
-                           for lbl,n,spy,jepi,_,cash,sr in T5])
+    rd = regime_frontier(monthly)  # (label, N, SPY%, JEPI%, AGG%, Sharpe)
+    t5_df = pd.DataFrame([{"Regime":lbl,"N":n,"SPY%":spy,"JEPI%":jepi,"AGG%":agg,"Sharpe":sr}
+                           for lbl,n,spy,jepi,agg,sr in rd])
     def _hl5(df):
         s = pd.DataFrame("", index=df.index, columns=df.columns)
         for i, row in t5_df.iterrows():
@@ -587,15 +630,15 @@ with col_left:
         return s
     st.dataframe(
         t5_df.style.apply(_hl5, axis=None)
-             .format({"SPY%":"{:.1f}","JEPI%":"{:.1f}","Cash%":"{:.1f}","Sharpe":"{:.2f}"}),
+             .format({"SPY%":"{:.1f}","JEPI%":"{:.1f}","AGG%":"{:.1f}","Sharpe":"{:.2f}"}),
         hide_index=True, use_container_width=True,
     )
 
     fig_w = go.Figure()
-    for asset, col_c, vals in [("SPY",  CS,        [r[2] for r in T5]),
-                                ("JEPI", "#58a6ff", [r[3] for r in T5]),
-                                ("Cash", CC,        [r[5] for r in T5])]:
-        fig_w.add_trace(go.Bar(name=asset, x=[r[0] for r in T5], y=vals, marker_color=col_c))
+    for asset, col_c, idx in [("SPY",  CS,        2),
+                               ("JEPI", "#58a6ff", 3),
+                               ("AGG",  CA,        4)]:
+        fig_w.add_trace(go.Bar(name=asset, x=[r[0] for r in rd], y=[r[idx] for r in rd], marker_color=col_c))
     fig_w.update_layout(**lo(h=240))
     fig_w.update_layout(barmode="stack", hovermode="x unified", yaxis_title="Gewichtung (%)")
     fig_w.update_yaxes(ticksuffix=" %")
@@ -629,7 +672,7 @@ with col_right:
         text=[f"  RF ({rf*100:.1f}%)"], textposition="middle right",
         marker=dict(color=CC, size=10, symbol="diamond"),
         textfont=dict(size=11, color=MUTED), showlegend=False))
-    fig3.update_layout(**lo(h=530, title="Effizienzlinie: SPY, JEPI, AGG + Cash (Long-only)"))
+    fig3.update_layout(**lo(h=530, title="Effizienzlinie: SPY, JEPI, AGG (Long-only)"))
     fig3.update_layout(xaxis_title="Ann. Volatilität (%)", yaxis_title="Ann. Erwartungsrendite (%)",
                        hovermode="closest", legend=dict(font=dict(size=11)))
     fig3.update_xaxes(ticksuffix=" %"); fig3.update_yaxes(ticksuffix=" %")
