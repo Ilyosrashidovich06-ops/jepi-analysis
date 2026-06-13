@@ -616,23 +616,17 @@ with col_right:
         fig3.add_trace(go.Scatter(x=cal_v*100, y=(rf+(rt-rf)/vt*cal_v)*100,
             mode="lines", name="Capital Allocation Line",
             line=dict(color="#9b59b6", width=1.8, dash="dash"), opacity=0.85))
-    for nm, av, ar, ac in zip(["JEPI","SPY","AGG"], vols_i*100, mu*100, [CJ,CS,CA]):
+    for nm, av, ar, ac in zip(["JEPI","AGG"], [vols_i[0],vols_i[2]]*100, [mu[0],mu[2]]*100, [CJ,CA]):
         fig3.add_trace(go.Scatter(x=[av], y=[ar], mode="markers+text", name=nm,
             text=[f"  {nm}"], textposition="middle right",
             marker=dict(color=ac, size=14, line=dict(color="white",width=1.5)),
             textfont=dict(size=13)))
-    fig3.add_trace(go.Scatter(x=[vt*100], y=[rt*100], mode="markers",
-        name=f"Tangenzportfolio = 100 % SPY (Sharpe {bsr:.2f})",
-        marker=dict(color="gold", size=16, symbol="star",
-                    line=dict(color="white",width=1.5))))
-    fig3.add_annotation(
-        x=vt*100, y=rt*100,
-        text="★ Tangenzportfolio<br>= 100 % SPY",
-        showarrow=True, arrowhead=2, arrowcolor="gold",
-        ax=55, ay=-45,
-        font=dict(color="gold", size=11),
-        bgcolor="#1c2128", bordercolor="gold", borderwidth=1,
-        borderpad=4, opacity=0.92)
+    fig3.add_trace(go.Scatter(x=[vt*100], y=[rt*100], mode="markers+text",
+        name=f"SPY — Tangenzportfolio (Sharpe {bsr:.2f})",
+        text=["  SPY ★"], textposition="middle right",
+        marker=dict(color="gold", size=18, symbol="star",
+                    line=dict(color="white", width=1.5)),
+        textfont=dict(color="gold", size=13)))
     fig3.add_trace(go.Scatter(x=[0], y=[rf*100], mode="markers+text",
         text=[f"  RF ({rf*100:.1f}%)"], textposition="middle right",
         marker=dict(color=CC, size=10, symbol="diamond"),
