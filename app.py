@@ -434,33 +434,34 @@ else:
 
 # ── DATENBASIS ────────────────────────────────────────────────────────────────
 st.markdown('<hr class="sec-rule">', unsafe_allow_html=True)
-st.markdown("## Datenbasis & Deskriptive Statistik")
+st.markdown("## Datenbasis & Ausgangslage")
 
-t1_df = pd.DataFrame({
-    "Kennzahl": ["Ann. Rendite (%)", "Ann. Volatilität (%)", "Schiefe (monatl.)",
-                 "Überschuss-Kurtosis", "Sharpe Ratio", "Max. Drawdown (%)"],
-    "JEPI": [T1["JEPI"]["ret"],  T1["JEPI"]["vol"],  T1["JEPI"]["skew"],
-             T1["JEPI"]["kurt"], T1["JEPI"]["sharpe"],T1["JEPI"]["mdd"]],
-    "SPY":  [T1["SPY"]["ret"],   T1["SPY"]["vol"],   T1["SPY"]["skew"],
-             T1["SPY"]["kurt"],  T1["SPY"]["sharpe"], T1["SPY"]["mdd"]],
-    "AGG":  [T1["AGG"]["ret"],   T1["AGG"]["vol"],   T1["AGG"]["skew"],
-             T1["AGG"]["kurt"],  T1["AGG"]["sharpe"], T1["AGG"]["mdd"]],
-})
+db1, db2, db3 = st.columns(3)
+with db1:
+    st.markdown(f"""<div class="kpi-box">
+        <div class="kpi-label">Ausschüttungsrendite p.a.</div>
+        <div class="kpi-value" style="color:#003087;">JEPI 8,3 %</div>
+        <div class="kpi-sub" style="color:{MUTED};">SPY nur 1,3 % — 6× mehr Ausschüttung</div>
+    </div>""", unsafe_allow_html=True)
+with db2:
+    st.markdown(f"""<div class="kpi-box">
+        <div class="kpi-label">Gesamtrendite p.a. (Mai 2020–2026)</div>
+        <div class="kpi-value" style="color:{CS};">SPY 17,9 %</div>
+        <div class="kpi-sub" style="color:{MUTED};">JEPI nur 10,6 % — trotz höherer Ausschüttung</div>
+    </div>""", unsafe_allow_html=True)
+with db3:
+    st.markdown(f"""<div class="kpi-box">
+        <div class="kpi-label">Kurswachstum p.a. (ohne Ausschüttung)</div>
+        <div class="kpi-value" style="color:#f59e0b;">JEPI ~2,3 %</div>
+        <div class="kpi-sub" style="color:{MUTED};">SPY ~16,6 % — Kurs bleibt fast stehen</div>
+    </div>""", unsafe_allow_html=True)
 
-def _hl_t1(df):
-    s = pd.DataFrame("", index=df.index, columns=df.columns)
-    s.iloc[4, 1:] = "background-color:#1a3a6e;color:#93c5fd;font-weight:700"
-    return s
-
-st.dataframe(
-    t1_df.style.apply(_hl_t1, axis=None)
-         .format({"JEPI":"{:.2f}","SPY":"{:.2f}","AGG":"{:.2f}"}),
-    hide_index=True, use_container_width=True,
-)
 st.markdown("""
-<div class="find">
-JEPI bietet ca. <strong>65 % der SPY-Rendite bei nur 66 % der Volatilität</strong>
-— aber SPY bleibt nach Sharpe Ratio der stärkere Baustein (0,95 vs. 0,74).
+<div class="note" style="margin-top:16px;">
+<strong>Hypothese:</strong> Die 8,3 % Ausschüttung entsteht nicht aus neuem Einkommen —
+sie wird durch den systematischen Verzicht auf Kursgewinne finanziert.
+JEPI <em>verpackt</em> Aktienrendite in monatliche Zahlungen um.
+<strong>Abbildung 1</strong> überprüft dies mit Black-Scholes.
 </div>
 """, unsafe_allow_html=True)
 
